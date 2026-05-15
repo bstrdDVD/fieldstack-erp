@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FieldStack ERP — Demo Proycel</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ══════════════════════════════════
+   DESIGN TOKENS — Industrial precision
+   ══════════════════════════════════ */
+:root{
+  --ink:#0a0c0f;--ink2:#111418;--ink3:#181d24;--ink4:#1f2633;--ink5:#263040;
+  --wire:#1e2840;--wire2:#2a3854;--wire3:#364a6e;
+  --chalk:#c8d8f0;--chalk2:#8a9dc0;--chalk3:#4a5a78;--chalk4:#2a3550;
+  --volt:#00ff88;--volt2:#00cc6a;--volt3:#004422;--volt4:#001a0e;
+  --arc:#3d9eff;--arc2:#1a7aff;--arc3:#0a2a5e;
+  --heat:#ff6b35;--heat2:#cc4a1a;--heat3:#3d1500;
+  --warn:#ffcc00;--warn3:#3d2e00;
+  --err:#ff3355;--err3:#3d0011;
+  --f:'Geist',system-ui,sans-serif;
+  --fm:'Geist Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--ink);font-family:var(--f);color:var(--chalk);font-size:13px;overflow:hidden}
+input,select,button,textarea{font-family:var(--f)}
+::selection{background:var(--volt3);color:var(--volt)}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:var(--ink2)}
+::-webkit-scrollbar-thumb{background:var(--wire3);border-radius:1px}
+
+/* ══════════ LOGIN ══════════════════ */
+#login{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:900;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 15% 85%,rgba(0,255,136,.06) 0%,transparent 55%),
+    radial-gradient(ellipse 60% 70% at 85% 15%,rgba(61,158,255,.05) 0%,transparent 55%),
+    repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(255,255,255,.008) 40px,rgba(255,255,255,.008) 41px),
+    repeating-linear-gradient(90deg,transparent,transparent 40px,rgba(255,255,255,.008) 40px,rgba(255,255,255,.008) 41px)}
+.lbox{width:100%;max-width:400px;padding:20px}
+.llogo{margin-bottom:28px}
+.lmark{font-family:var(--fm);font-size:26px;font-weight:700;letter-spacing:-2px;line-height:1}
+.lmark em{color:var(--volt);font-style:normal}
+.ltag{font-size:10px;color:var(--chalk3);margin-top:6px;letter-spacing:.15em;text-transform:uppercase;font-family:var(--fm)}
+.lcard{background:var(--ink2);border:1px solid var(--wire2);border-radius:12px;padding:26px;
+  box-shadow:0 0 0 1px rgba(0,255,136,.04),inset 0 1px 0 rgba(255,255,255,.03),0 20px 60px rgba(0,0,0,.6)}
+.ltit{font-size:16px;font-weight:600;margin-bottom:3px}
+.lsub{font-size:11px;color:var(--chalk3);margin-bottom:20px}
+.llbl{font-size:10px;color:var(--chalk2);font-weight:500;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px;font-family:var(--fm)}
+.linp{width:100%;background:var(--ink3);border:1px solid var(--wire2);border-radius:8px;padding:11px 13px;
+  color:var(--chalk);font-size:13px;outline:none;margin-bottom:13px;transition:border .15s}
+.linp:focus{border-color:var(--volt3);box-shadow:0 0 0 3px rgba(0,255,136,.06)}
+.lbtn{width:100%;padding:12px;background:var(--volt);color:#000;border:none;border-radius:8px;
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;font-family:var(--fm);letter-spacing:.03em}
+.lbtn:hover{background:var(--volt2);transform:translateY(-1px)}
+.lbtn:disabled{background:var(--volt3);color:rgba(0,255,136,.3);cursor:not-allowed;transform:none}
+.lerr{background:var(--err3);border:1px solid var(--err)33;border-radius:7px;padding:9px 12px;
+  font-size:11px;color:var(--err);margin-bottom:12px;display:none;font-family:var(--fm)}
+.lhint{font-size:11px;color:var(--chalk3);margin-top:14px;text-align:center;line-height:1.6}
+.lhint strong{color:var(--chalk2);font-family:var(--fm)}
+.lcfg{background:var(--ink3);border:1px solid var(--wire);border-radius:8px;padding:10px 12px;
+  font-size:11px;color:var(--chalk3);margin-top:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all .15s}
+.lcfg:hover{background:var(--ink4);color:var(--chalk2)}
+.cfgp{background:var(--ink3);border:1px solid var(--wire2);border-radius:8px;padding:13px;margin-top:8px;display:none}
+.cfgp.open{display:block}
+
+/* ══════════ APP ════════════════════ */
+#app{display:none;height:100vh;overflow:hidden}
+.layout{display:flex;height:100%}
+
+/* SIDEBAR */
+.sb{width:220px;min-width:220px;background:var(--ink2);border-right:1px solid var(--wire);display:flex;flex-direction:column;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(255,255,255,.005) 60px,rgba(255,255,255,.005) 61px)}
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--wire)}
+.sb-mark{font-family:var(--fm);font-size:15px;font-weight:700;letter-spacing:-1px}
+.sb-mark em{color:var(--volt);font-style:normal}
+.sb-ver{font-size:9px;color:var(--chalk4);margin-top:3px;letter-spacing:.1em;text-transform:uppercase;font-family:var(--fm)}
+.sb-nav{padding:10px 8px;flex:1;overflow-y:auto}
+.sb-g{font-size:9px;color:var(--chalk4);padding:10px 10px 4px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;font-family:var(--fm)}
+.sb-i{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:7px;border:none;cursor:pointer;
+  font-size:12px;font-weight:500;background:none;color:var(--chalk3);margin-bottom:1px;transition:all .15s;text-align:left;font-family:var(--f)}
+.sb-i:hover{background:var(--ink3);color:var(--chalk)}
+.sb-i.on{background:var(--volt4);color:var(--volt);border:1px solid var(--volt3)}
+.sb-ic{font-size:13px;width:16px;text-align:center;flex-shrink:0}
+.sb-badge{margin-left:auto;background:var(--err);color:#fff;font-size:9px;padding:1px 5px;border-radius:6px;font-weight:700;font-family:var(--fm)}
+.sb-type-badge{font-size:8px;padding:1px 5px;border-radius:3px;font-family:var(--fm);font-weight:600;margin-left:4px}
+.sb-type-t{background:var(--arc3);color:var(--arc)}
+.sb-type-e{background:var(--heat3);color:var(--heat)}
+.sb-user{padding:12px;border-top:1px solid var(--wire);display:flex;align-items:center;gap:8px}
+.sb-av{width:30px;height:30px;border-radius:6px;background:var(--volt4);border:1px solid var(--volt3);
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--volt);flex-shrink:0;font-family:var(--fm)}
+.sb-nm{font-size:11px;font-weight:600}
+.sb-rl{font-size:10px;color:var(--chalk3);font-family:var(--fm)}
+.sb-live{width:6px;height:6px;border-radius:50%;background:var(--volt);margin-left:auto;flex-shrink:0;
+  box-shadow:0 0 8px var(--volt);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1;box-shadow:0 0 8px var(--volt)}50%{opacity:.4;box-shadow:none}}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tb{background:var(--ink2);border-bottom:1px solid var(--wire);padding:0 20px;
+  display:flex;align-items:center;gap:10px;min-height:50px;flex-shrink:0}
+.tb-t{font-size:14px;font-weight:600;flex:1}
+.tb-crumb{color:var(--chalk3);cursor:pointer;font-weight:400}.tb-crumb:hover{color:var(--chalk2)}
+.tb-live{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--chalk3);
+  padding:4px 10px;background:var(--ink3);border:1px solid var(--wire);border-radius:5px;font-family:var(--fm)}
+.tb-live-dot{width:5px;height:5px;border-radius:50%;background:var(--volt);animation:blink 2s infinite}
+.content{flex:1;overflow-y:auto;padding:18px 20px}
+
+/* ══════════ COMPONENTS ═════════════ */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;
+  font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--f);letter-spacing:.01em}
+.btn-v{background:var(--volt);color:#000}.btn-v:hover{background:var(--volt2);transform:translateY(-1px)}
+.btn-g{background:var(--ink3);color:var(--chalk);border:1px solid var(--wire2)}.btn-g:hover{background:var(--ink4)}
+.btn-o{background:transparent;color:var(--chalk2);border:1px solid var(--wire)}.btn-o:hover{background:var(--ink3)}
+.btn-r{background:var(--err3);color:var(--err);border:1px solid var(--err)33}
+.btn-b{background:var(--arc3);color:var(--arc);border:1px solid var(--arc)33}
+.btn-h{background:var(--heat3);color:var(--heat);border:1px solid var(--heat)33}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn:disabled{opacity:.3;cursor:not-allowed;transform:none!important}
+
+.card{background:var(--ink2);border:1px solid var(--wire);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.card-tit{font-size:12px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:7px;color:var(--chalk2);text-transform:uppercase;letter-spacing:.05em;font-family:var(--fm)}
+
+.kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.kpi{background:var(--ink2);border:1px solid var(--wire);border-radius:10px;padding:12px 14px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.015) 0%,transparent 60%);pointer-events:none}
+.kpi-l{font-size:9px;color:var(--chalk3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.1em;font-family:var(--fm)}
+.kpi-v{font-size:24px;font-weight:700;font-family:var(--fm);letter-spacing:-1.5px;line-height:1}
+.kpi-s{font-size:10px;color:var(--chalk4);margin-top:3px;font-family:var(--fm)}
+
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;
+  font-size:10px;font-weight:600;white-space:nowrap;font-family:var(--fm)}
+.b-v{background:var(--volt4);color:var(--volt);border:1px solid var(--volt3)}
+.b-b{background:var(--arc3);color:var(--arc);border:1px solid var(--arc)22}
+.b-w{background:var(--warn3);color:var(--warn);border:1px solid var(--warn)33}
+.b-r{background:var(--err3);color:var(--err);border:1px solid var(--err)22}
+.b-h{background:var(--heat3);color:var(--heat);border:1px solid var(--heat)33}
+.b-g{background:var(--ink4);color:var(--chalk2);border:1px solid var(--wire)}
+.b-t{background:var(--arc3);color:var(--arc);border:1px solid var(--arc)33}
+.b-e{background:var(--heat3);color:var(--heat);border:1px solid var(--heat)33}
+
+table{width:100%;border-collapse:collapse}
+th{padding:7px 10px;text-align:left;color:var(--chalk3);font-size:9px;font-weight:600;
+   text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--wire);font-family:var(--fm)}
+td{padding:8px 10px;border-bottom:1px solid var(--ink3);color:var(--chalk);font-size:12px;vertical-align:middle}
+tr:hover td{background:var(--ink3)}
+tr:last-child td{border-bottom:none}
+
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.fl{font-size:10px;color:var(--chalk2);font-weight:600;text-transform:uppercase;letter-spacing:.07em;font-family:var(--fm)}
+.fi,.fs{background:var(--ink3);border:1px solid var(--wire2);border-radius:7px;padding:8px 11px;
+  color:var(--chalk);font-size:12px;outline:none;width:100%;transition:border .15s}
+.fi:focus,.fs:focus{border-color:var(--volt3);box-shadow:0 0 0 2px rgba(0,255,136,.05)}
+.fta{background:var(--ink3);border:1px solid var(--wire2);border-radius:7px;padding:8px 11px;
+  color:var(--chalk);font-size:12px;outline:none;width:100%;resize:vertical;min-height:70px;transition:border .15s;font-family:var(--f)}
+.fta:focus{border-color:var(--volt3)}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--wire);margin-bottom:14px}
+.tab{padding:9px 14px;font-size:11px;font-weight:600;border:none;background:none;cursor:pointer;
+  color:var(--chalk3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;
+  font-family:var(--fm);text-transform:uppercase;letter-spacing:.06em}
+.tab.on{color:var(--volt);border-bottom-color:var(--volt)}
+
+.pbw{display:flex;align-items:center;gap:7px}
+.pb{flex:1;height:3px;background:var(--ink4);border-radius:2px;overflow:hidden}
+.pf{height:100%;border-radius:2px;transition:width .6s}
+.pp{font-size:10px;font-family:var(--fm);min-width:32px;font-weight:600}
+
+/* OVERLAY / MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px)}
+.modal{background:var(--ink2);border:1px solid var(--wire2);border-radius:12px;padding:22px;
+  width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.mhdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.mtit{font-size:14px;font-weight:700;font-family:var(--fm)}
+.mx{background:var(--ink3);border:1px solid var(--wire);border-radius:6px;color:var(--chalk3);cursor:pointer;padding:3px 9px;font-size:15px}
+.mact{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--wire)}
+
+.al{border-radius:7px;padding:9px 12px;font-size:11px;line-height:1.5;margin-bottom:10px;font-family:var(--fm)}
+.al-v{background:var(--volt4);border:1px solid var(--volt3);color:var(--volt)}
+.al-b{background:var(--arc3);border:1px solid var(--arc)22;color:var(--arc)}
+.al-w{background:var(--warn3);border:1px solid var(--warn)22;color:var(--warn)}
+.al-r{background:var(--err3);border:1px solid var(--err)22;color:var(--err)}
+
+/* QUIEBRE / PARTIDA ITEMS */
+.qrow{background:var(--ink3);border:1px solid var(--wire);border-radius:8px;padding:11px 13px;margin-bottom:8px;position:relative}
+.qrow-hdr{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.qrow-num{font-size:9px;color:var(--chalk3);font-family:var(--fm);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.qrow-del{position:absolute;top:9px;right:10px;background:none;border:none;color:var(--err);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px}
+.qrow-del:hover{background:var(--err3)}
+
+/* COMMENT CELL */
+.comment-cell{display:flex;align-items:center;gap:6px;margin-top:8px;padding:7px 10px;
+  background:var(--ink4);border-radius:6px;border:1px solid var(--wire);border-left:2px solid var(--warn)}
+.comment-cell.empty{border-left-color:var(--wire);opacity:.6}
+.comment-dot{width:6px;height:6px;border-radius:50%;background:var(--warn);flex-shrink:0}
+.comment-txt{font-size:11px;color:var(--chalk2);flex:1;font-style:italic}
+.comment-days{font-size:10px;color:var(--warn);font-family:var(--fm);font-weight:600;white-space:nowrap}
+
+/* TIPO OBRA PILL */
+.obra-tipo{display:inline-flex;align-items:center;gap:5px;font-size:10px;padding:3px 8px;border-radius:4px;font-family:var(--fm);font-weight:600}
+.ot-t{background:var(--arc3);color:var(--arc);border:1px solid var(--arc)33}
+.ot-e{background:var(--heat3);color:var(--heat);border:1px solid var(--heat)33}
+
+/* TOAST */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--ink2);border:1px solid var(--wire2);border-radius:9px;padding:10px 14px;
+  font-size:12px;display:flex;align-items:center;gap:8px;pointer-events:all;max-width:320px;
+  box-shadow:0 4px 24px rgba(0,0,0,.6);animation:tin .2s ease;font-family:var(--fm)}
+@keyframes tin{from{transform:translateX(120%);opacity:0}to{transform:none;opacity:1}}
+@keyframes tout{from{transform:none;opacity:1}to{transform:translateX(120%);opacity:0}}
+.t-v{border-color:var(--volt3);color:var(--volt)}
+.t-r{border-color:var(--err)33;color:var(--err)}
+.t-w{border-color:var(--warn)33;color:var(--warn)}
+
+.spin{width:14px;height:14px;border:2px solid var(--wire2);border-top-color:var(--volt);border-radius:50%;animation:rot .6s linear infinite;display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+.loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:40px;color:var(--chalk3);font-size:12px;font-family:var(--fm)}
+
+.sep{font-size:9px;color:var(--chalk3);text-transform:uppercase;letter-spacing:.12em;font-weight:600;
+  margin:12px 0 8px;display:flex;align-items:center;gap:8px;font-family:var(--fm)}
+.sep::after{content:'';flex:1;height:1px;background:var(--wire)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mono{font-family:var(--fm)}
+.dim{color:var(--chalk3)}
+.muted{color:var(--chalk2)}
+</style>
+</head>
+<body>
+<div id="toasts"></div>
+
+<!-- ══════════ LOGIN ══════════════════ -->
+<div id="login">
+  <div class="lbox">
+    <div class="llogo">
+      <div class="lmark">⚡ Field<em>Stack</em></div>
+      <div class="ltag">Sistema ERP de control de obra · Proycel</div>
+    </div>
+    <div class="lcard">
+      <div class="ltit">Acceso al sistema</div>
+      <div class="lsub">Ingresá con tu cuenta o usá las credenciales demo</div>
+      <div class="lerr" id="lerr"></div>
+      <label class="llbl">Correo</label>
+      <input class="linp" id="lemail" type="email" placeholder="usuario@proycel.cl" autocomplete="email"/>
+      <label class="llbl">Contraseña</label>
+      <input class="linp" id="lpass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <button class="lbtn" id="lbtn" onclick="doLogin()">Entrar al sistema →</button>
+      <div class="lhint">
+        Demo: <strong>demo@proycel.cl</strong> / <strong>demo2025</strong><br>
+        Ver todos los módulos sin restricciones
+      </div>
+      <div class="lcfg" onclick="toggleCfg()">
+        <span>⚙ Configurar Supabase</span><span id="cfgarr">▼</span>
+      </div>
+      <div class="cfgp" id="cfgp">
+        <div class="fg"><label class="fl">URL del proyecto</label>
+          <input class="fi" id="cfgurl" placeholder="https://xxxx.supabase.co" oninput="saveCfg()"/></div>
+        <div class="fg" style="margin-bottom:8px"><label class="fl">Anon Key</label>
+          <input class="fi" id="cfgkey" placeholder="eyJ..." oninput="saveCfg()"/></div>
+        <div style="font-size:10px;color:var(--chalk3);line-height:1.7;font-family:var(--fm)">
+          Supabase → Settings → API → anon public key<br>
+          Sin configurar: modo demo con datos locales
+        </div>
+        <button class="btn btn-b btn-sm" style="margin-top:10px;width:100%" onclick="testSB()">Probar conexión</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ APP ════════════════════ -->
+<div id="app">
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <div class="sb">
+      <div class="sb-logo">
+        <div class="sb-mark">⚡ Field<em>Stack</em></div>
+        <div class="sb-ver">ERP Proycel · Demo v1.0</div>
+      </div>
+      <nav class="sb-nav" id="sbnav"></nav>
+      <div class="sb-user">
+        <div class="sb-av" id="sbav">DM</div>
+        <div><div class="sb-nm" id="sbnm">—</div><div class="sb-rl" id="sbrl">—</div></div>
+        <div class="sb-live" title="En línea — tiempo real"></div>
+      </div>
+    </div>
+    <!-- MAIN -->
+    <div class="main">
+      <div class="tb">
+        <div class="tb-t" id="tbt">Dashboard</div>
+        <div class="tb-live"><div class="tb-live-dot"></div><span id="synctxt">Demo activa</span></div>
+        <div id="tbact"></div>
+        <button class="btn btn-o btn-sm" onclick="doLogout()">Salir</button>
+      </div>
+      <div class="content" id="content">
+        <div class="loading"><div class="spin"></div>Iniciando sistema...</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="mroot"></div>
+
+<script>
+// ════════════════════════════════════════════════
+// DATOS DEMO — Eléctricas + Telecomunicaciones
+// ════════════════════════════════════════════════
+const OBRAS = [
+  // TELECOMUNICACIONES
+  {id:'T348',nombre:'Telecom Termin San José 9',tipo:'telco',cliente:'VTR',constructora:'VAINLTDA',encargado:'R. Herrera',inicio:'2025-02-01',fin:'2025-08-30',estado:'activa',pct:62,region:'RM'},
+  {id:'T345',nombre:'Parque Eyzaguirre HFC',tipo:'telco',cliente:'VTR',constructora:'VAINLTDA',encargado:'C. Molina',inicio:'2025-03-10',fin:'2025-09-15',estado:'activa',pct:41,region:'RM'},
+  {id:'T350',nombre:'Parque Quilicura FTTH',tipo:'telco',cliente:'VTR',constructora:'VAINLTDA',encargado:'G. Pérez',inicio:'2025-01-15',fin:'2025-07-30',estado:'activa',pct:73,region:'RM'},
+  {id:'337AB',nombre:'Eco Egaña Edif AyB R3',tipo:'telco',cliente:'VTR',constructora:'DLP',encargado:'M. Torres',inicio:'2024-11-01',fin:'2025-06-30',estado:'activa',pct:55,region:'RM'},
+  // ELÉCTRICAS
+  {id:'EL-021',nombre:'Subestación Norte BT/AT',tipo:'electrica',cliente:'ENEL Chile',constructora:'VAINLTDA',encargado:'F. Rojas',inicio:'2025-01-10',fin:'2025-09-30',estado:'activa',pct:38,region:'RM'},
+  {id:'EL-034',nombre:'Remodelación Tableros P3',tipo:'electrica',cliente:'Cencosud',constructora:'DLP',encargado:'P. Soto',inicio:'2025-02-20',fin:'2025-07-20',estado:'activa',pct:81,region:'RM'},
+  {id:'EL-019',nombre:'Alumbrado Vía Expresa Sur',tipo:'electrica',cliente:'MOP',constructora:'VAINSA',encargado:'L. Castro',inicio:'2024-10-01',fin:'2025-05-30',estado:'activa',pct:94,region:'RM'},
+];
+
+const QUIEBRES = {
+  'T348':[
+    {id:'Q1',codigo:'1.1.1',desc:'EQUIPAMIENTO TRONCAL HFC (4P-16 DEPTOS)',unidad:'EDIF',cant_pres:17,cant_ejec:14,mat_consumido:0,comentario:'',dias_sin_mov:0,items_adicionales:[]},
+    {id:'Q2',codigo:'1.1.2',desc:'EQUIPAMIENTO LATERAL HFC (4P-16 DEPTOS)',unidad:'DEPTO',cant_pres:272,cant_ejec:224,mat_consumido:0,comentario:'',dias_sin_mov:0,items_adicionales:[]},
+    {id:'Q3',codigo:'1.1.3',desc:'CABLEADO HORIZONTAL SHAFT',unidad:'EDIF',cant_pres:17,cant_ejec:17,mat_consumido:0,comentario:'Shaft completado — pendiente etiquetado',dias_sin_mov:12,items_adicionales:[]},
+    {id:'Q4',codigo:'1.1.4',desc:'EQUIPAMIENTO CAJA PAU HFC',unidad:'DEPTO',cant_pres:272,cant_ejec:190,mat_consumido:0,comentario:'',dias_sin_mov:0,items_adicionales:[]},
+    {id:'Q5',codigo:'1.2.1',desc:'EQUIPAMIENTO TRONCAL HFC (4P-8 DEPTOS)',unidad:'EDIF',cant_pres:1,cant_ejec:0,mat_consumido:0,comentario:'Edificio 18 bloqueado por permisos municipales',dias_sin_mov:22,items_adicionales:[]},
+    {id:'Q6',codigo:'GG.05',desc:'GASTOS GENERALES — HERRAMIENTAS',unidad:'GL',cant_pres:1,cant_ejec:1,mat_consumido:0,comentario:'',dias_sin_mov:0,items_adicionales:[]},
+  ],
+  'EL-021':[
+    {id:'QE1',codigo:'1.1',desc:'MONTAJE TRANSFORMADOR 250 KVA',unidad:'UN',cant_pres:2,cant_ejec:1,mat_consumido:0,comentario:'',dias_sin_mov:0,items_adicionales:[]},
+    {id:'QE2',codigo:'1.2',desc:'TENDIDO CABLE BT XLPE 3x240mm²',unidad:'ML',cant_pres:850,cant_ejec:320,mat_consumido:0,comentario:'Zona 3 con interferencia de canalizaciones — pendiente coordinación',dias_sin_mov:18,items_adicionales:[]},
+    {id:'QE3',codigo:'1.3',desc:'MONTAJE TABLERO DISTRIBUCIÓN PRINCIPAL',unidad:'UN',cant_pres:1,cant_ejec:0,mat_consumido:0,comentario:'',dias_sin_mov:0,items_adicionales:[]},
+    {id:'QE4',codigo:'2.1',desc:'CANALIZACIÓN CONDUIT RÍGIDO 4"',unidad:'ML',cant_pres:420,cant_ejec:180,mat_consumido:0,comentario:'',dias_sin_mov:5,items_adicionales:[]},
+    {id:'QE5',codigo:'GG.01',desc:'GASTOS GENERALES — SEGURIDAD Y EPP',unidad:'GL',cant_pres:1,cant_ejec:1,mat_consumido:0,comentario:'',dias_sin_mov:0,items_adicionales:[]},
+  ],
+};
+
+const MATERIALES_T = [
+  {cod:'MOL0904',desc:'AMARRA PLASTICA NEGRA 280x4,8mm',unidad:'uni',cat:'Consumibles'},
+  {cod:'MOTK183001',desc:'CABLE COAXIAL RG-6 BLINDAJE ALUM 75%',unidad:'mt',cat:'Conductores'},
+  {cod:'MOTK24001',desc:'CONECTOR COAXIAL "F" COMPRESION RG-6',unidad:'uni',cat:'Conectores'},
+  {cod:'MOKV5094',desc:'PLACA ESPECIAL COAXIAL EPC 16P',unidad:'uni',cat:'Distribución'},
+  {cod:'MOKV5096',desc:'SPLITTER DOMIC. 2 VIAS 5-1218 MHZ',unidad:'uni',cat:'Distribución'},
+  {cod:'MOT0112',desc:'SPLITTER 2 VIAS 5-1000MHz',unidad:'uni',cat:'Distribución'},
+  {cod:'MOT0338',desc:'AMPLIFICADOR TRONCAL 8 PUERTOS',unidad:'uni',cat:'Activos'},
+];
+
+const MATERIALES_E = [
+  {cod:'CAB-XLPE240',desc:'CABLE XLPE 3x240mm² TRIPOLAR',unidad:'ml',cat:'Conductores'},
+  {cod:'CAB-THW6',desc:'CABLE THW 6mm² NEGRO',unidad:'ml',cat:'Conductores'},
+  {cod:'CON-RIGID4',desc:'CONDUIT RÍGIDO PVC 4"',unidad:'ml',cat:'Canalización'},
+  {cod:'TAB-TGP250',desc:'TABLERO GRAL. PROTECCIÓN 250A',unidad:'un',cat:'Tableros'},
+  {cod:'DIS-3P63A',desc:'DISYUNTOR TRIPOLAR 63A 10KA',unidad:'un',cat:'Protecciones'},
+  {cod:'TRF-250KVA',desc:'TRANSFORMADOR 250 KVA 13,2/0,4KV',unidad:'un',cat:'Activos'},
+  {cod:'TUB-EMT34',desc:'TUBO EMT GALV. 3/4"',unidad:'ml',cat:'Canalización'},
+];
+
+const PMS = [
+  {id:'PM-T348-001',obra_id:'T348',fecha:'2025-04-10',estado:'entregado_parcial',urgencia:'normal',solicitante:'R. Herrera',
+   items:[
+     {mat_cod:'MOTK183001',mat_desc:'Cable Coaxial RG-6',quiebre:'1.1.3',solicitado:610,entregado:610,guia:'GI-3504',saldo:230,unidad:'mt'},
+     {mat_cod:'MOTK24001',mat_desc:'Conector F Compresión',quiebre:'1.1.2',solicitado:200,entregado:150,guia:'GE-3521',saldo:62,unidad:'uni'},
+     {mat_cod:'MOT0112',mat_desc:'Splitter 2 Vías',quiebre:'1.1.1',solicitado:24,entregado:24,guia:'GI-3504',saldo:8,unidad:'uni'},
+   ]},
+  {id:'PM-T348-002',obra_id:'T348',fecha:'2025-05-02',estado:'enviado',urgencia:'urgente',solicitante:'R. Herrera',
+   items:[{mat_cod:'MOT0338',mat_desc:'Amplificador Troncal 8P',quiebre:'1.1.1',solicitado:4,entregado:0,guia:null,saldo:0,unidad:'uni'}]},
+  {id:'PM-EL021-001',obra_id:'EL-021',fecha:'2025-04-15',estado:'entregado_parcial',urgencia:'normal',solicitante:'F. Rojas',
+   items:[
+     {mat_cod:'CAB-XLPE240',mat_desc:'Cable XLPE 3x240mm²',quiebre:'1.2',solicitado:450,entregado:320,guia:'GI-3601',saldo:120,unidad:'ml'},
+     {mat_cod:'CON-RIGID4',mat_desc:'Conduit Rígido PVC 4"',quiebre:'2.1',solicitado:200,entregado:180,guia:'GI-3601',saldo:45,unidad:'ml'},
+   ]},
+  {id:'PM-EL021-002',obra_id:'EL-021',fecha:'2025-05-05',estado:'enviado',urgencia:'urgente',solicitante:'F. Rojas',
+   items:[{mat_cod:'TRF-250KVA',mat_desc:'Transformador 250 KVA',quiebre:'1.1',solicitado:1,entregado:0,guia:null,saldo:0,unidad:'un'}]},
+];
+
+const VCS = [
+  {id:'VC-T348-089',obra_id:'T348',fecha:'2025-05-08',encargado:'R. Herrera',estado:'confirmado',
+   items:[{mat_cod:'MOTK183001',mat_desc:'Cable Coaxial RG-6',guia:'GI-3504',unidad:'mt',total:290,
+     dists:[{quiebre:'1.1.3',desc:'CABLEADO HORIZONTAL SHAFT',cantidad:180,obs:'Shaft B piso 3-8'},
+            {quiebre:'1.1.1',desc:'EQUIPAMIENTO TRONCAL HFC',cantidad:110,obs:'Troncal nivel 1'}]}]},
+  {id:'VC-EL021-041',obra_id:'EL-021',fecha:'2025-05-09',encargado:'F. Rojas',estado:'confirmado',
+   items:[{mat_cod:'CAB-XLPE240',mat_desc:'Cable XLPE 3x240mm²',guia:'GI-3601',unidad:'ml',total:200,
+     dists:[{quiebre:'1.2',desc:'TENDIDO CABLE BT XLPE',cantidad:200,obs:'Tramo zona 1-2'}]}]},
+];
+
+const INV = {
+  'T348':[
+    {mat_cod:'MOTK183001',desc:'Cable Coaxial RG-6',unidad:'mt',ini:610,cons:380,saldo:230},
+    {mat_cod:'MOTK24001',desc:'Conector F Compresión RG-6',unidad:'uni',ini:200,cons:138,saldo:62},
+    {mat_cod:'MOL0904',desc:'Amarra Plástica 280x4.8mm',unidad:'uni',ini:500,cons:210,saldo:290},
+    {mat_cod:'MOT0112',desc:'Splitter 2 Vías 5-1000MHz',unidad:'uni',ini:24,cons:16,saldo:8},
+  ],
+  'EL-021':[
+    {mat_cod:'CAB-XLPE240',desc:'Cable XLPE 3x240mm²',unidad:'ml',ini:450,cons:200,saldo:250},
+    {mat_cod:'CON-RIGID4',desc:'Conduit Rígido PVC 4"',unidad:'ml',ini:200,cons:135,saldo:65},
+  ],
+  'EL-034':[
+    {mat_cod:'DIS-3P63A',desc:'Disyuntor Tripolar 63A',unidad:'un',ini:24,cons:22,saldo:2},
+    {mat_cod:'TUB-EMT34',desc:'Tubo EMT Galv. 3/4"',unidad:'ml',ini:300,cons:280,saldo:20},
+  ],
+};
+
+// ════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ════════════════════════════════════════════════
+let SB=null, SESION=null;
+let C={obras:OBRAS,pms:PMS,vcs:VCS,inv:INV,quiebres:JSON.parse(JSON.stringify(QUIEBRES))};
+let SEC='dashboard',OID=null,TAB='quiebres';
+
+const $=id=>document.getElementById(id);
+const fmtF=s=>s?new Date(s+'T12:00').toLocaleDateString('es-CL'):'—';
+const clamp=(n,lo,hi)=>Math.min(Math.max(n,lo),hi);
+
+// ════════════════════════════════════════════════
+// CONFIG / SUPABASE
+// ════════════════════════════════════════════════
+function getCfg(){try{return JSON.parse(localStorage.getItem('fs_cfg')||'{}')}catch{return{}}}
+function saveCfg(){const u=$('cfgurl')?.value?.trim(),k=$('cfgkey')?.value?.trim();if(u&&k){localStorage.setItem('fs_cfg',JSON.stringify({url:u,key:k}));initSB();}}
+function initSB(){const c=getCfg();if(c.url&&c.key){SB=supabase.createClient(c.url,c.key);return true;}return false;}
+async function testSB(){if(!initSB()){toast('Configurá URL y Key primero','w');return;}try{const{error}=await SB.from('obras').select('id').limit(1);if(error)throw error;toast('Supabase conectado ✓');}catch(e){toast('Error: '+e.message,'r');}}
+function toggleCfg(){const p=$('cfgp'),a=$('cfgarr');p.classList.toggle('open');a.textContent=p.classList.contains('open')?'▲':'▼';}
+
+// ════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════
+const DEMO_USERS={
+  'demo@proycel.cl':{pass:'demo2025',nombre:'Demo — Vista completa',inicial:'DM',rol:'admin',obras:[]},
+  'encargado@proycel.cl':{pass:'proycel2025',nombre:'R. Herrera',inicial:'RH',rol:'encargado',obras:['T348']},
+  'jefe@proycel.cl':{pass:'proycel2025',nombre:'M. Torres',inicial:'MT',rol:'jefe_area',obras:[]},
+  'adquisiciones@proycel.cl':{pass:'proycel2025',nombre:'Adquisiciones',inicial:'AQ',rol:'adquisiciones',obras:[]},
+};
+
+async function doLogin(){
+  const em=$('lemail').value.trim().toLowerCase(), pw=$('lpass').value;
+  if(!em||!pw){showErr('Completá email y contraseña');return;}
+  $('lbtn').disabled=true;$('lbtn').textContent='Entrando...';hideErr();
+  const demo=DEMO_USERS[em];
+  if(demo&&demo.pass===pw){SESION={email:em,...demo};entrar();return;}
+  if(SB){
+    try{
+      const{data,error}=await SB.auth.signInWithPassword({email:em,password:pw});
+      if(error)throw error;
+      SESION={email:em,nombre:demo?.nombre||em.split('@')[0],inicial:demo?.inicial||em.substring(0,2).toUpperCase(),rol:demo?.rol||'encargado',obras:demo?.obras||[]};
+      entrar();return;
+    }catch(e){showErr('Error: '+e.message);}
+  } else {showErr('Credenciales incorrectas. Demo: demo@proycel.cl / demo2025');}
+  $('lbtn').disabled=false;$('lbtn').textContent='Entrar al sistema →';
+}
+
+function showErr(m){const e=$('lerr');e.textContent=m;e.style.display='block';}
+function hideErr(){$('lerr').style.display='none';}
+
+function entrar(){
+  $('login').style.display='none';$('app').style.display='block';
+  $('sbav').textContent=SESION.inicial;$('sbnm').textContent=SESION.nombre;
+  $('sbrl').textContent=SESION.rol.replace(/_/g,' ');
+  nav('dashboard');
+}
+
+function doLogout(){
+  SESION=null;$('app').style.display='none';$('login').style.display='flex';
+  $('lbtn').disabled=false;$('lbtn').textContent='Entrar al sistema →';$('lpass').value='';
+}
+
+// ════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════
+const NAVDEF=[
+  {g:'Principal'},{id:'dashboard',i:'⊞',l:'Dashboard'},
+  {g:'Telecomunicaciones'},
+  ...OBRAS.filter(o=>o.tipo==='telco').map(o=>({id:'obra:'+o.id,i:'◎',l:o.id,sub:o.nombre.substring(0,20)+'…',tipo:'t'})),
+  {g:'Eléctrica'},
+  ...OBRAS.filter(o=>o.tipo==='electrica').map(o=>({id:'obra:'+o.id,i:'◎',l:o.id,sub:o.nombre.substring(0,20)+'…',tipo:'e'})),
+  {g:'Operaciones'},
+  {id:'pms',i:'↗',l:'Pedidos (PM)',cnt:()=>C.pms.filter(p=>p.estado==='enviado').length},
+  {id:'vcs',i:'✓',l:'Vales (VC)'},
+  {id:'gti',i:'⇄',l:'Traslados (GTI)'},
+  {g:'Sistema'},
+  {id:'catalogo',i:'◈',l:'Catálogo'},
+];
+
+function renderNav(){
+  const cur=OID?'obra:'+OID:SEC;
+  $('sbnav').innerHTML=NAVDEF.map(n=>{
+    if(n.g) return `<div class="sb-g">${n.g}</div>`;
+    const cnt=n.cnt?n.cnt():0;
+    const isObra=n.id.startsWith('obra:');
+    const tipoBadge=isObra?`<span class="sb-type-badge sb-type-${n.tipo}">${n.tipo==='t'?'TELCO':'ELEC'}</span>`:'';
+    return `<button class="sb-i${cur===n.id?' on':''}" onclick="nav('${n.id}')">
+      <span class="sb-ic">${n.i}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.l}</span>
+      ${tipoBadge}
+      ${cnt>0?`<span class="sb-badge">${cnt}</span>`:''}
+    </button>`;
+  }).join('');
+}
+
+function nav(id){
+  if(id.startsWith('obra:')){OID=id.replace('obra:','');SEC='obra-detalle';}
+  else{SEC=id;OID=null;}
+  TAB='quiebres';renderNav();render();
+}
+
+// ════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ════════════════════════════════════════════════
+function render(){
+  const o=C.obras.find(x=>x.id===OID);
+  const TITLES={dashboard:'Dashboard — Vista global',pms:'Pedidos de Material',vcs:'Vales de Consumo',gti:'Traslados entre obras',catalogo:'Catálogo de materiales'};
+  $('tbt').innerHTML=SEC==='obra-detalle'&&o
+    ? `<span class="tb-crumb" onclick="nav('dashboard')">Obras</span> / <span style="color:var(--chalk2)">${o.nombre}</span>`
+    : TITLES[SEC]||'';
+  $('tbact').innerHTML=SEC==='obra-detalle'&&o
+    ? `<button class="btn btn-g btn-sm" onclick="mAddQuiebre()">+ Quiebre</button>
+       <button class="btn btn-g btn-sm" onclick="mPM()">+ PM</button>
+       <button class="btn btn-v btn-sm" onclick="mVC()">+ Vale VC</button>`
+    : SEC==='dashboard'?`<button class="btn btn-g btn-sm" onclick="mNuevaObra()">+ Nueva obra</button>`:'';
+  const V={dashboard:vDash,'obra-detalle':vDet,pms:vPMsglobal,vcs:vVCsglobal,gti:vGTI,catalogo:vCat};
+  $('content').innerHTML=(V[SEC]||vDash)();
+}
+
+// ════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════
+function pb(p){
+  const c=p>=85?'var(--err)':p>=65?'var(--warn)':'var(--volt)';
+  return `<div class="pbw"><div class="pb"><div class="pf" style="width:${clamp(p,0,100)}%;background:${c}"></div></div><span class="pp mono" style="color:${c}">${p}%</span></div>`;
+}
+function bdg(e){
+  const M={activa:['b-v','ACTIVA'],finalizada:['b-g','FIN'],borrador:['b-g','BORRADOR'],
+    enviado:['b-b','ENVIADO'],en_proceso:['b-w','EN PROCESO'],entregado_parcial:['b-h','PARC.'],
+    entregado_completo:['b-v','COMPLETO'],confirmado:['b-v','CONFIRMADO'],
+    urgente:['b-r','URGENTE'],normal:['b-b','NORMAL']};
+  const[c,l]=M[e]||['b-g',e.toUpperCase()];
+  return `<span class="badge ${c}">${l}</span>`;
+}
+function tipoBadge(tipo){return tipo==='telco'?`<span class="obra-tipo ot-t">◉ TELCO</span>`:`<span class="obra-tipo ot-e">⚡ ELEC</span>`;}
+
+// ════════════════════════════════════════════════
+// VISTA: DASHBOARD
+// ════════════════════════════════════════════════
+function vDash(){
+  const tot=C.obras.length, telco=C.obras.filter(o=>o.tipo==='telco').length, elec=C.obras.filter(o=>o.tipo==='electrica').length;
+  const pend=C.pms.filter(p=>p.estado==='enviado').length;
+  const crit=Object.values(C.inv).flat().filter(i=>Math.round((i.cons/i.ini)*100)>=80).length;
+  const sinMov=Object.values(C.quiebres).flat().filter(q=>q.dias_sin_mov>=15).length;
+  return `
+  <div class="kgrid">
+    <div class="kpi"><div class="kpi-l">Obras activas</div><div class="kpi-v" style="color:var(--volt)">${tot}</div><div class="kpi-s">${telco} telco · ${elec} eléctrica</div></div>
+    <div class="kpi"><div class="kpi-l">PMs sin guía</div><div class="kpi-v" style="color:var(--warn)">${pend}</div><div class="kpi-s">pendientes de entrega</div></div>
+    <div class="kpi"><div class="kpi-l">Stock crítico</div><div class="kpi-v" style="color:var(--err)">${crit}</div><div class="kpi-s">materiales ≥80% consumo</div></div>
+    <div class="kpi"><div class="kpi-l">Sin movimiento</div><div class="kpi-v" style="color:var(--heat)">${sinMov}</div><div class="kpi-s">quiebres ≥15 días</div></div>
+  </div>
+  <div class="grid2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="card-tit">⚡ Telecomunicaciones</div>
+      ${C.obras.filter(o=>o.tipo==='telco').map(o=>`
+        <div style="cursor:pointer;padding:10px 0;border-bottom:1px solid var(--ink3)" onclick="nav('obra:${o.id}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div><span class="mono" style="font-size:10px;color:var(--chalk3)">${o.id}</span> <span style="font-size:12px;font-weight:600">${o.nombre}</span></div>
+            <div style="display:flex;gap:5px">${bdg(o.estado)}</div>
+          </div>
+          ${pb(o.pct)}
+          <div style="font-size:10px;color:var(--chalk3);margin-top:4px;font-family:var(--fm)">${o.encargado} · ${o.constructora} · fin: ${fmtF(o.fin)}</div>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-tit">🔌 Eléctrica</div>
+      ${C.obras.filter(o=>o.tipo==='electrica').map(o=>`
+        <div style="cursor:pointer;padding:10px 0;border-bottom:1px solid var(--ink3)" onclick="nav('obra:${o.id}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div><span class="mono" style="font-size:10px;color:var(--chalk3)">${o.id}</span> <span style="font-size:12px;font-weight:600">${o.nombre}</span></div>
+            ${bdg(o.estado)}
+          </div>
+          ${pb(o.pct)}
+          <div style="font-size:10px;color:var(--chalk3);margin-top:4px;font-family:var(--fm)">${o.encargado} · ${o.constructora} · fin: ${fmtF(o.fin)}</div>
+        </div>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-tit">⚠ Quiebres sin movimiento ≥15 días</div>
+    ${Object.entries(C.quiebres).flatMap(([oid,qs])=>
+      qs.filter(q=>q.dias_sin_mov>=15).map(q=>{
+        const o=C.obras.find(x=>x.id===oid);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--ink3);cursor:pointer" onclick="nav('obra:${oid}')">
+          <span class="mono" style="font-size:10px;color:var(--chalk3);min-width:80px">${oid}</span>
+          <span class="mono" style="font-size:10px;color:var(--warn);min-width:50px">${q.codigo}</span>
+          <span style="flex:1;font-size:11px">${q.desc}</span>
+          ${tipoBadge(o?.tipo)}
+          <span class="mono" style="color:var(--heat);font-size:11px;font-weight:700">${q.dias_sin_mov}d</span>
+          ${q.comentario?`<span style="font-size:10px;color:var(--warn);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💬 ${q.comentario}</span>`:''}
+        </div>`;
+      })).join('')||`<div class="dim" style="font-size:11px;padding:8px 0">Sin quiebres detenidos — todo en movimiento</div>`}
+  </div>`;
+}
+
+// ════════════════════════════════════════════════
+// VISTA: DETALLE OBRA
+// ════════════════════════════════════════════════
+function vDet(){
+  const o=C.obras.find(x=>x.id===OID);
+  if(!o) return `<div class="loading"><div class="spin"></div>Obra no encontrada</div>`;
+  const oPMs=C.pms.filter(p=>p.obra_id===o.id);
+  const oVCs=C.vcs.filter(v=>v.obra_id===o.id);
+  const inv=C.inv[o.id]||[];
+  const qs=C.quiebres[o.id]||[];
+  const TABS=[{id:'quiebres',l:`Quiebres (${qs.length})`},{id:'bodega',l:`Bodega (${inv.length})`},{id:'pms',l:`PMs (${oPMs.length})`},{id:'vcs',l:`VCs (${oVCs.length})`}];
+  const sinMov=qs.filter(q=>q.dias_sin_mov>=15).length;
+  return `
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    ${tipoBadge(o.tipo)}
+    <div>
+      <div style="font-size:16px;font-weight:700">${o.nombre}</div>
+      <div style="font-size:11px;margin-top:2px;display:flex;align-items:center;gap:8px" class="muted">
+        <span class="mono">${o.id}</span><span>·</span><span>${o.constructora}</span><span>·</span><span>${o.encargado}</span>
+      </div>
+    </div>
+    ${bdg(o.estado)}
+    ${sinMov>0?`<span class="badge b-h" style="margin-left:auto">⚠ ${sinMov} quiebre(s) sin mov.</span>`:''}
+  </div>
+  <div class="kgrid">
+    <div class="kpi"><div class="kpi-l">Quiebres</div><div class="kpi-v" style="color:var(--arc)">${qs.length}</div><div class="kpi-s">${qs.filter(q=>q.items_adicionales?.length>0).length} con ítems extra</div></div>
+    <div class="kpi"><div class="kpi-l">Avance</div><div class="kpi-v" style="color:var(--warn)">${o.pct}%</div><div class="kpi-s">vs presupuesto</div></div>
+    <div class="kpi"><div class="kpi-l">VCs emitidos</div><div class="kpi-v" style="color:var(--volt)">${oVCs.length}</div><div class="kpi-s">confirmados</div></div>
+    <div class="kpi"><div class="kpi-l">PMs activos</div><div class="kpi-v" style="color:var(--heat)">${oPMs.length}</div><div class="kpi-s">${oPMs.filter(p=>p.estado==='enviado').length} sin guía</div></div>
+  </div>
+  <div class="tabs">${TABS.map(t=>`<button class="tab${TAB===t.id?' on':''}" onclick="TAB='${t.id}';render()">${t.l}</button>`).join('')}</div>
+  ${TAB==='quiebres'?rQuiebres(qs,o):TAB==='bodega'?rBodega(inv):TAB==='pms'?rPMs(oPMs):rVCs(oVCs)}`;
+}
+
+// ════════════════════════════════════════════════
+// RENDER QUIEBRES — el módulo más importante
+// ════════════════════════════════════════════════
+function rQuiebres(qs,o){
+  if(!qs.length) return `<div class="card"><div class="dim" style="padding:24px;text-align:center;font-family:var(--fm)">Sin quiebres cargados — importá el Excel de partidas o agregá uno manualmente</div></div>`;
+  return `
+  <div class="al al-b" style="margin-bottom:10px">
+    ℹ Los quiebres son la estructura base de la obra. Podés agregar ítems adicionales a cualquier quiebre durante la ejecución y dejar comentarios en los que llevan tiempo sin movimiento.
+  </div>
+  ${qs.map((q,qi)=>{
+    const pct=Math.round((q.cant_ejec/q.cant_pres)*100);
+    const sinMov=q.dias_sin_mov>=15;
+    const tieneComentario=q.comentario&&q.comentario.trim().length>0;
+    const tieneExtras=q.items_adicionales&&q.items_adicionales.length>0;
+    return `
+    <div class="card" style="${sinMov?'border-color:var(--heat)33':tieneExtras?'border-color:var(--arc)33':''}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="mono" style="font-size:11px;font-weight:700;color:var(--arc);min-width:50px">${q.codigo}</span>
+        <span style="font-size:13px;font-weight:600;flex:1">${q.desc}</span>
+        <span class="mono" style="font-size:10px;color:var(--chalk3)">${q.cant_ejec}/${q.cant_pres} ${q.unidad}</span>
+        ${sinMov?`<span class="badge b-h">⏱ ${q.dias_sin_mov}d sin mov.</span>`:''}
+        ${tieneExtras?`<span class="badge b-b">+${q.items_adicionales.length} ítem(s)</span>`:''}
+      </div>
+      ${pb(pct)}
+
+      <!-- COMENTARIO (siempre visible, editable) -->
+      <div style="margin-top:10px">
+        <div class="comment-cell${!tieneComentario?' empty':''}">
+          ${sinMov?`<div class="comment-dot"></div>`:'<div style="width:6px;height:6px;border-radius:50%;background:var(--wire3);flex-shrink:0"></div>'}
+          <input style="flex:1;background:none;border:none;outline:none;font-size:11px;color:${tieneComentario?'var(--chalk)':'var(--chalk3)'};font-family:var(--f);font-style:${tieneComentario?'normal':'italic'}"
+            value="${q.comentario}" placeholder="${sinMov?'Este quiebre lleva '+q.dias_sin_mov+' días sin consumo — agregá un comentario...':'Comentario opcional (motivo de pausa, observaciones de campo, etc.)'}"
+            onchange="editComentario('${o.id}','${q.id}',this.value)"/>
+          ${sinMov?`<span class="mono" style="color:var(--heat);font-size:10px;font-weight:700;white-space:nowrap">${q.dias_sin_mov}d</span>`:''}
+        </div>
+      </div>
+
+      <!-- ÍTEMS ADICIONALES -->
+      ${tieneExtras?`
+        <div class="sep" style="margin-top:10px">Ítems adicionales al quiebre</div>
+        ${q.items_adicionales.map((ex,ei)=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--ink4);border-radius:6px;margin-bottom:4px;border-left:2px solid var(--arc)">
+            <span class="mono" style="font-size:10px;color:var(--arc);min-width:60px">${ex.codigo}</span>
+            <span style="flex:1;font-size:11px">${ex.desc}</span>
+            <span class="mono" style="font-size:10px;color:var(--chalk3)">${ex.cant} ${ex.unidad}</span>
+            <button class="btn btn-o btn-sm" style="padding:2px 8px;font-size:10px" onclick="removeItemExtra('${o.id}','${q.id}',${ei})">✕</button>
+          </div>`).join('')}
+      `:''}
+
+      <!-- ACCIONES -->
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-g btn-sm" onclick="mAddItemExtra('${o.id}','${q.id}')">+ Ítem adicional</button>
+        <button class="btn btn-o btn-sm" style="margin-left:auto" onclick="mEditQuiebre('${o.id}','${q.id}')">Editar</button>
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+
+function editComentario(oid,qid,val){
+  const qs=C.quiebres[oid];
+  const q=qs?.find(x=>x.id===qid);
+  if(q) q.comentario=val;
+  toast('Comentario guardado ✓');
+}
+
+function removeItemExtra(oid,qid,idx){
+  const q=C.quiebres[oid]?.find(x=>x.id===qid);
+  if(q){q.items_adicionales.splice(idx,1);render();toast('Ítem eliminado');}
+}
+
+// ════════════════════════════════════════════════
+// RENDER BODEGA
+// ════════════════════════════════════════════════
+function rBodega(inv){
+  if(!inv.length) return `<div class="card"><div class="dim" style="padding:24px;text-align:center;font-family:var(--fm)">Sin datos de bodega</div></div>`;
+  return `<div class="card" style="padding:0;overflow:hidden"><table>
+    <thead><tr><th>Código</th><th>Material</th><th>Unid.</th><th>Stock ini.</th><th>Consumido</th><th>Saldo</th><th>% Consumo</th></tr></thead>
+    <tbody>${inv.map(it=>{const p=Math.round((it.cons/it.ini)*100);return `
+      <tr><td class="mono dim" style="font-size:10px">${it.mat_cod}</td>
+        <td>${it.desc}</td><td class="mono muted">${it.unidad}</td>
+        <td class="mono muted">${it.ini}</td>
+        <td class="mono" style="color:var(--err)">${it.cons}</td>
+        <td class="mono" style="color:var(--volt);font-weight:700">${it.saldo}</td>
+        <td style="min-width:130px">${pb(p)}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+// ════════════════════════════════════════════════
+// RENDER PMs
+// ════════════════════════════════════════════════
+function rPMs(pms){
+  if(!pms.length) return `<div class="card"><div class="dim" style="padding:24px;text-align:center;font-family:var(--fm)">Sin PMs para esta obra</div></div>`;
+  return pms.map(pm=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div><div class="mono" style="font-size:13px;font-weight:700">${pm.id}</div>
+        <div style="font-size:10px;margin-top:2px;font-family:var(--fm)" class="dim">${fmtF(pm.fecha)} · ${pm.solicitante}</div></div>
+        <div style="display:flex;gap:5px">${bdg(pm.urgencia)}${bdg(pm.estado)}</div>
+      </div>
+      <table><thead><tr><th>Material</th><th>Quiebre</th><th>Solicitado</th><th>Entregado</th><th>Guía</th><th>Saldo bodega</th></tr></thead>
+      <tbody>${(pm.items||[]).map(it=>`
+        <tr><td>${it.mat_desc}</td>
+          <td><span class="mono" style="font-size:10px;background:var(--ink4);color:var(--arc);padding:1px 6px;border-radius:3px">${it.quiebre}</span></td>
+          <td class="mono muted">${it.solicitado} ${it.unidad}</td>
+          <td class="mono" style="color:${it.entregado>0?'var(--volt)':'var(--chalk3)'}">${it.entregado} ${it.unidad}</td>
+          <td>${it.guia?`<span class="mono" style="color:var(--arc);font-size:10px">${it.guia}</span>`:'<span class="dim">—</span>'}</td>
+          <td class="mono" style="color:${it.saldo>0?'var(--volt)':'var(--chalk3)'};font-weight:${it.saldo>0?700:400}">${it.saldo} ${it.unidad}</td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// RENDER VCs
+// ════════════════════════════════════════════════
+function rVCs(vcs){
+  if(!vcs.length) return `<div class="card"><div class="dim" style="padding:24px;text-align:center;font-family:var(--fm)">Sin vales confirmados</div></div>`;
+  return vcs.map(vc=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <div><div class="mono" style="font-size:13px;font-weight:700">${vc.id}</div>
+        <div style="font-size:10px;margin-top:2px;font-family:var(--fm)" class="dim">${fmtF(vc.fecha)} · ${vc.encargado}</div></div>
+        ${bdg(vc.estado)}
+      </div>
+      ${(vc.items||[]).map(it=>`
+        <div style="background:var(--ink3);border-radius:7px;padding:10px 12px;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:7px;flex-wrap:wrap;gap:4px">
+            <span style="font-size:12px;font-weight:600">${it.mat_desc}</span>
+            <span style="font-size:10px;font-family:var(--fm)" class="dim">Guía <span style="color:var(--arc)">${it.guia}</span> · total <span style="color:var(--volt);font-weight:700">${it.total} ${it.unidad}</span></span>
+          </div>
+          ${(it.dists||[]).map(d=>`
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--ink4)">
+              <span class="mono" style="font-size:10px;background:var(--ink);color:var(--arc);padding:1px 6px;border-radius:3px">${d.quiebre}</span>
+              <span style="flex:1;font-size:11px" class="muted">${d.desc}</span>
+              <span class="mono" style="color:var(--volt);font-weight:700">${d.cantidad} ${it.unidad}</span>
+              ${d.obs?`<span style="font-size:10px" class="dim">· ${d.obs}</span>`:''}
+            </div>`).join('')}
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// VISTA: PMs GLOBAL
+// ════════════════════════════════════════════════
+function vPMsglobal(){
+  return `
+  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+    <span style="font-size:11px;color:var(--chalk3);font-family:var(--fm)">Todos los pedidos activos en el sistema</span>
+    <span class="badge b-r" style="margin-left:auto">${C.pms.filter(p=>p.estado==='enviado').length} urgentes sin guía</span>
+  </div>
+  <div>${C.pms.map(pm=>{
+    const o=C.obras.find(x=>x.id===pm.obra_id);
+    return `<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="nav('obra:${pm.obra_id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <div><span class="mono" style="font-size:13px;font-weight:700">${pm.id}</span>
+        <span style="font-size:10px;margin-left:10px;font-family:var(--fm)" class="dim">${o?.nombre||pm.obra_id} · ${fmtF(pm.fecha)} · ${pm.solicitante}</span></div>
+        <div style="display:flex;gap:5px;align-items:center">${tipoBadge(o?.tipo)}${bdg(pm.urgencia)}${bdg(pm.estado)}</div>
+      </div>
+      <div style="font-size:10px;margin-top:6px;font-family:var(--fm)" class="dim">${(pm.items||[]).length} material(es) · click para ver detalle</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ════════════════════════════════════════════════
+// VISTA: VCs GLOBAL
+// ════════════════════════════════════════════════
+function vVCsglobal(){
+  return `<div>${C.vcs.map(vc=>{
+    const o=C.obras.find(x=>x.id===vc.obra_id);
+    return `<div class="card" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <div><span class="mono" style="font-size:13px;font-weight:700">${vc.id}</span>
+        <span style="font-size:10px;margin-left:10px;font-family:var(--fm)" class="dim">${o?.nombre||vc.obra_id} · ${fmtF(vc.fecha)} · ${vc.encargado}</span></div>
+        <div style="display:flex;gap:5px">${tipoBadge(o?.tipo)}${bdg(vc.estado)}</div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ════════════════════════════════════════════════
+// VISTA: GTI
+// ════════════════════════════════════════════════
+function vGTI(){
+  return `
+  <div class="al al-b">ℹ Los traslados entre obras permiten mover material de una obra a otra con aprobación del jefe. Reemplaza los traslados informales por WhatsApp.</div>
+  <div class="card">
+    <div class="card-tit">Historial de traslados (GTI)</div>
+    <div class="dim" style="font-size:11px;padding:16px 0;text-align:center;font-family:var(--fm)">
+      Sin traslados registrados aún.<br>
+      <button class="btn btn-v btn-sm" style="margin-top:10px" onclick="mGTI()">+ Registrar traslado urgente</button>
+    </div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════
+// VISTA: CATÁLOGO
+// ════════════════════════════════════════════════
+function vCat(){
+  const all=[...MATERIALES_T.map(m=>({...m,tipo:'telco'})),...MATERIALES_E.map(m=>({...m,tipo:'electrica'}))];
+  const CC={Conductores:'var(--arc)',Conectores:'var(--heat)',Distribución:'var(--warn)',Consumibles:'var(--chalk2)',Señalética:'var(--volt)',Activos:'var(--err)',Tableros:'var(--arc)',Protecciones:'var(--err)',Canalización:'var(--warn)'};
+  return `
+  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end">
+    <div class="fg" style="flex:1;margin:0"><label class="fl">Buscar</label>
+      <input class="fi" id="cq" placeholder="Código o descripción..." oninput="filterCat(this.value)"/></div>
+    <button class="btn btn-v">+ Nuevo material</button>
+    <button class="btn btn-g">↑ Importar Excel</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <span class="badge b-b">TELCO: ${MATERIALES_T.length} materiales</span>
+    <span class="badge b-h">ELEC: ${MATERIALES_E.length} materiales</span>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table><thead><tr><th>Código</th><th>Descripción</th><th>Tipo obra</th><th>Categoría</th><th>Unidad</th></tr></thead>
+    <tbody id="catb">${all.map(m=>`
+      <tr data-q="${m.cod}|${m.desc.toLowerCase()}">
+        <td class="mono dim" style="font-size:10px">${m.cod}</td>
+        <td>${m.desc}</td>
+        <td>${tipoBadge(m.tipo)}</td>
+        <td><span style="color:${CC[m.cat]||'var(--chalk2)'};font-size:10px;font-weight:600;font-family:var(--fm)">${m.cat}</span></td>
+        <td class="mono muted">${m.unidad}</td>
+      </tr>`).join('')}
+    </tbody></table>
+  </div>`;
+}
+function filterCat(q){document.querySelectorAll('#catb tr').forEach(tr=>{tr.style.display=(!q||tr.dataset.q?.includes(q.toLowerCase()))?'':'none';});}
+
+// ════════════════════════════════════════════════
+// MODALES
+// ════════════════════════════════════════════════
+function showM(tit,body,w=560){
+  $('mroot').innerHTML=`
+    <div class="ov" id="ov" onclick="if(event.target===$('ov'))closeM()">
+      <div class="modal" style="max-width:${w}px">
+        <div class="mhdr"><span class="mtit">${tit}</span><button class="mx" onclick="closeM()">✕</button></div>
+        ${body}
+      </div>
+    </div>`;
+}
+function closeM(){$('mroot').innerHTML='';}
+
+// MODAL: Nueva obra
+function mNuevaObra(){
+  showM('Nueva obra',`
+    <div class="fr2">
+      <div class="fg"><label class="fl">Tipo de obra</label>
+        <select class="fs" id="no-t"><option value="telco">Telecomunicaciones</option><option value="electrica">Eléctrica</option></select></div>
+      <div class="fg"><label class="fl">Código</label><input class="fi" id="no-id" placeholder="T351 / EL-042"/></div>
+    </div>
+    <div class="fg"><label class="fl">Nombre completo</label><input class="fi" id="no-nm" placeholder="Nombre descriptivo de la obra"/></div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Cliente</label><input class="fi" id="no-cl" placeholder="VTR / ENEL / MOP"/></div>
+      <div class="fg"><label class="fl">Constructora</label><input class="fi" id="no-co" placeholder="VAINLTDA / DLP / VAINSA"/></div>
+    </div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Encargado</label><input class="fi" id="no-en" placeholder="Nombre del encargado"/></div>
+      <div class="fg"><label class="fl">Fin estimado</label><input class="fi" id="no-fi" type="date"/></div>
+    </div>
+    <div class="mact">
+      <button class="btn btn-o" onclick="closeM()">Cancelar</button>
+      <button class="btn btn-v" onclick="guardarObra()">Crear obra →</button>
+    </div>`,560);
+}
+
+function guardarObra(){
+  const o={
+    id:$('no-id').value.trim(), nombre:$('no-nm').value.trim(),
+    tipo:$('no-t').value, cliente:$('no-cl').value.trim(),
+    constructora:$('no-co').value.trim(), encargado:$('no-en').value.trim(),
+    fin:$('no-fi').value, inicio:new Date().toISOString().split('T')[0],
+    estado:'activa', pct:0, region:'RM'
+  };
+  if(!o.id||!o.nombre){toast('Completá código y nombre','r');return;}
+  C.obras.push(o);
+  C.quiebres[o.id]=[];
+  C.inv[o.id]=[];
+  closeM();nav('obra:'+o.id);
+  toast('Obra '+o.id+' creada ✓');
+}
+
+// MODAL: Agregar quiebre
+function mAddQuiebre(){
+  const o=C.obras.find(x=>x.id===OID);
+  showM(`Nuevo quiebre — ${o?.id}`,`
+    <div class="al al-b">Los quiebres son los destinos de consumo del presupuesto. Si durante la ejecución necesitás agregar uno que no estaba, lo hacés acá.</div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Código quiebre</label><input class="fi" id="qc" placeholder="ej: 1.1.5 / 2.2 / GG.06"/></div>
+      <div class="fg"><label class="fl">Unidad de medida</label><input class="fi" id="qu" placeholder="EDIF / DEPTO / ML / GL"/></div>
+    </div>
+    <div class="fg"><label class="fl">Descripción</label><input class="fi" id="qd" placeholder="Descripción del quiebre presupuestario"/></div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Cantidad presupuestada</label><input class="fi" id="qp" type="number" placeholder="0"/></div>
+      <div class="fg"><label class="fl">Ejecutado actual</label><input class="fi" id="qe" type="number" placeholder="0"/></div>
+    </div>
+    <div class="fg"><label class="fl">Comentario inicial (opcional)</label>
+      <textarea class="fta" id="qcm" placeholder="Contexto del quiebre, motivo del agregado, etc."></textarea>
+    </div>
+    <div class="mact">
+      <button class="btn btn-o" onclick="closeM()">Cancelar</button>
+      <button class="btn btn-v" onclick="guardarQuiebre()">Agregar quiebre →</button>
+    </div>`,540);
+}
+
+function guardarQuiebre(){
+  const q={
+    id:'Q'+Date.now(),
+    codigo:$('qc').value.trim(), desc:$('qd').value.trim(),
+    unidad:$('qu').value.trim()||'UN',
+    cant_pres:parseFloat($('qp').value)||0,
+    cant_ejec:parseFloat($('qe').value)||0,
+    comentario:$('qcm').value.trim(),
+    dias_sin_mov:0, items_adicionales:[],
+  };
+  if(!q.codigo||!q.desc){toast('Completá código y descripción','r');return;}
+  if(!C.quiebres[OID]) C.quiebres[OID]=[];
+  C.quiebres[OID].push(q);
+  closeM();TAB='quiebres';render();
+  toast('Quiebre '+q.codigo+' agregado ✓');
+}
+
+// MODAL: Agregar ítem adicional a quiebre
+function mAddItemExtra(oid,qid){
+  showM('Ítem adicional al quiebre',`
+    <div class="al al-b">Agregá un ítem que no estaba en el quiebre original pero es necesario durante la ejecución. Queda registrado con fecha y usuario.</div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Código ítem</label><input class="fi" id="exc" placeholder="ej: ADD-001"/></div>
+      <div class="fg"><label class="fl">Unidad</label><input class="fi" id="exu" placeholder="uni / ml / GL"/></div>
+    </div>
+    <div class="fg"><label class="fl">Descripción</label><input class="fi" id="exd" placeholder="Qué es este ítem adicional"/></div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Cantidad</label><input class="fi" id="exq" type="number" placeholder="0"/></div>
+      <div class="fg"><label class="fl">Motivo del agregado</label><input class="fi" id="exm" placeholder="Ej: requerimiento en obra por cambio de diseño"/></div>
+    </div>
+    <div class="mact">
+      <button class="btn btn-o" onclick="closeM()">Cancelar</button>
+      <button class="btn btn-v" onclick="guardarItemExtra('${oid}','${qid}')">Agregar ítem →</button>
+    </div>`,520);
+}
+
+function guardarItemExtra(oid,qid){
+  const ex={
+    codigo:$('exc').value.trim(), desc:$('exd').value.trim(),
+    unidad:$('exu').value.trim()||'un',
+    cant:parseFloat($('exq').value)||0,
+    motivo:$('exm').value.trim(),
+    fecha:new Date().toISOString().split('T')[0],
+    usuario:SESION?.nombre||'demo',
+  };
+  if(!ex.codigo||!ex.desc){toast('Completá código y descripción','r');return;}
+  const q=C.quiebres[oid]?.find(x=>x.id===qid);
+  if(q){q.items_adicionales.push(ex);closeM();TAB='quiebres';render();toast('Ítem adicional agregado al quiebre ✓');}
+}
+
+// MODAL: Editar quiebre
+function mEditQuiebre(oid,qid){
+  const q=C.quiebres[oid]?.find(x=>x.id===qid);
+  if(!q) return;
+  showM(`Editar quiebre ${q.codigo}`,`
+    <div class="fr2">
+      <div class="fg"><label class="fl">Cant. presupuestada</label>
+        <input class="fi" id="eq-p" type="number" value="${q.cant_pres}"/></div>
+      <div class="fg"><label class="fl">Cant. ejecutada actual</label>
+        <input class="fi" id="eq-e" type="number" value="${q.cant_ejec}"/></div>
+    </div>
+    <div class="fg"><label class="fl">Comentario / observación</label>
+      <textarea class="fta" id="eq-c">${q.comentario}</textarea>
+    </div>
+    <div class="mact">
+      <button class="btn btn-o" onclick="closeM()">Cancelar</button>
+      <button class="btn btn-v" onclick="guardarEditQuiebre('${oid}','${qid}')">Guardar cambios</button>
+    </div>`,480);
+}
+
+function guardarEditQuiebre(oid,qid){
+  const q=C.quiebres[oid]?.find(x=>x.id===qid);
+  if(q){
+    q.cant_pres=parseFloat($('eq-p').value)||q.cant_pres;
+    q.cant_ejec=parseFloat($('eq-e').value)||q.cant_ejec;
+    q.comentario=$('eq-c').value.trim();
+    closeM();render();toast('Quiebre actualizado ✓');
+  }
+}
+
+// MODAL: Nuevo PM
+let PM_ITEMS=[{mat_cod:'',mat_desc:'',quiebre:'',solicitado:'',unidad:'u',obs:''}];
+
+function mPM(){
+  const o=C.obras.find(x=>x.id===OID);
+  PM_ITEMS=[{mat_cod:'',mat_desc:'',quiebre:'',solicitado:'',unidad:'u',obs:''}];
+  const mats=o?.tipo==='electrica'?MATERIALES_E:MATERIALES_T;
+  const qs=C.quiebres[OID]||[];
+  showM(`Nuevo PM — ${o?.id}`,`
+    <div class="fr2">
+      <div class="fg"><label class="fl">Urgencia</label>
+        <select class="fs" id="pm-urg"><option value="normal">Normal</option><option value="urgente">Urgente</option></select></div>
+      <div class="fg"><label class="fl">Encargado</label>
+        <input class="fi" value="${o?.encargado||SESION?.nombre||''}" disabled/></div>
+    </div>
+    <div class="sep">Materiales solicitados</div>
+    <div id="pmwrap">${renderPMItems(mats,qs)}</div>
+    <button class="btn btn-g btn-sm" style="width:100%;margin-bottom:12px" onclick="addPMItem()">+ Agregar material</button>
+    <div class="mact">
+      <button class="btn btn-o" onclick="closeM()">Cancelar</button>
+      <button class="btn btn-g" onclick="gPM('borrador')">Guardar borrador</button>
+      <button class="btn btn-v" onclick="gPM('enviado')">Enviar PM →</button>
+    </div>`,660);
+}
+
+function renderPMItems(mats,qs){
+  mats=mats||[]; qs=qs||[];
+  return PM_ITEMS.map((_,i)=>`
+    <div class="qrow">
+      <div class="qrow-hdr"><span class="qrow-num">Ítem ${i+1}</span></div>
+      ${PM_ITEMS.length>1?`<button class="qrow-del" onclick="rmPMItem(${i})">✕</button>`:''}
+      <div class="fr2" style="margin-bottom:8px">
+        <div class="fg" style="margin:0"><label class="fl">Material del catálogo</label>
+          <select class="fs" id="pm-sel-${i}" onchange="onPMSel(${i})">
+            <option value="">Seleccioná...</option>
+            ${mats.map(m=>`<option value="${m.cod}">${m.cod} — ${m.desc}</option>`).join('')}
+          </select></div>
+        <div class="fg" style="margin:0"><label class="fl">Quiebre destino</label>
+          <select class="fs" id="pm-q-${i}">
+            <option value="">Seleccioná quiebre...</option>
+            ${qs.map(q=>`<option value="${q.codigo}">${q.codigo} — ${q.desc}</option>`).join('')}
+            ${qs.flatMap(q=>(q.items_adicionales||[]).map(ex=>`<option value="${q.codigo}/${ex.codigo}">${q.codigo}/${ex.codigo} — ${ex.desc} [adicional]</option>`)).join('')}
+          </select></div>
+      </div>
+      <div class="fr3">
+        <div class="fg" style="margin:0"><label class="fl">Cantidad</label>
+          <input class="fi" id="pm-qty-${i}" type="number" placeholder="0"/></div>
+        <div class="fg" style="margin:0"><label class="fl">Unidad</label>
+          <input class="fi" id="pm-uni-${i}" placeholder="uni/mt/ml"/></div>
+        <div class="fg" style="margin:0"><label class="fl">Observación</label>
+          <input class="fi" id="pm-obs-${i}" placeholder="Opcional"/></div>
+      </div>
+    </div>`).join('');
+}
+
+function onPMSel(i){
+  const o=C.obras.find(x=>x.id===OID);
+  const mats=o?.tipo==='electrica'?MATERIALES_E:MATERIALES_T;
+  const cod=$(`pm-sel-${i}`).value;
+  const m=mats.find(x=>x.cod===cod);
+  if(m&&$(`pm-uni-${i}`)) $(`pm-uni-${i}`).value=m.unidad;
+}
+
+function addPMItem(){
+  PM_ITEMS.push({mat_cod:'',mat_desc:'',quiebre:'',solicitado:'',unidad:'u',obs:''});
+  const o=C.obras.find(x=>x.id===OID);
+  const mats=o?.tipo==='electrica'?MATERIALES_E:MATERIALES_T;
+  const qs=C.quiebres[OID]||[];
+  $('pmwrap').innerHTML=renderPMItems(mats,qs);
+}
+
+function rmPMItem(i){
+  PM_ITEMS.splice(i,1);
+  const o=C.obras.find(x=>x.id===OID);
+  const mats=o?.tipo==='electrica'?MATERIALES_E:MATERIALES_T;
+  const qs=C.quiebres[OID]||[];
+  $('pmwrap').innerHTML=renderPMItems(mats,qs);
+}
+
+function gPM(estado){
+  const o=C.obras.find(x=>x.id===OID);
+  const items=PM_ITEMS.map((_,i)=>{
+    const cod=$(`pm-sel-${i}`)?.value||'';
+    const mats=o?.tipo==='electrica'?MATERIALES_E:MATERIALES_T;
+    const m=mats.find(x=>x.cod===cod);
+    return {
+      mat_cod:cod, mat_desc:m?.desc||cod,
+      quiebre:$(`pm-q-${i}`)?.value||'',
+      solicitado:parseFloat($(`pm-qty-${i}`)?.value||0)||0,
+      unidad:$(`pm-uni-${i}`)?.value||m?.unidad||'u',
+      obs:$(`pm-obs-${i}`)?.value||'',
+      entregado:0, guia:null, saldo:0,
+    };
+  }).filter(it=>it.mat_cod&&it.solicitado>0);
+  if(!items.length){toast('Completá al menos un ítem','r');return;}
+  const pm={id:`PM-${o.id}-${String(Date.now()).slice(-4)}`,obra_id:o.id,
+    fecha:new Date().toISOString().split('T')[0],estado,urgencia:$('pm-urg')?.value||'normal',
+    solicitante:SESION?.nombre||o.encargado,items};
+  C.pms.unshift(pm);
+  closeM();render();
+  toast(`PM con ${items.length} ítem(s) ${estado==='enviado'?'enviado':'guardado'} ✓`);
+}
+
+// MODAL: Nuevo VC
+let VC_S={guia:'',mat_cod:'',saldo:0,unidad:'u',dists:[{quiebre:'',cantidad:'',obs:''}]};
+
+function mVC(){
+  const o=C.obras.find(x=>x.id===OID);
+  const guias=C.pms.filter(p=>p.obra_id===o.id)
+    .flatMap(pm=>(pm.items||[]).filter(i=>i.guia&&i.saldo>0)
+    .map(i=>({key:`${i.guia}|${i.mat_cod}`,guia:i.guia,mat:i.mat_desc,cod:i.mat_cod,saldo:i.saldo,unidad:i.unidad})));
+  VC_S={guia:'',mat_cod:'',saldo:0,unidad:'u',dists:[{quiebre:'',cantidad:'',obs:''}]};
+  showM(`Nuevo Vale de Consumo — ${o?.id}`,`
+    <div class="fr2">
+      <div class="fg"><label class="fl">Fecha</label>
+        <input class="fi" id="vcf" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+      <div class="fg"><label class="fl">Encargado</label><input class="fi" value="${o?.encargado||''}" disabled/></div>
+    </div>
+    <div class="fg"><label class="fl">Guía disponible</label>
+      <select class="fs" id="vcg" onchange="onVCG(this.value)">
+        <option value="">Seleccioná una guía con saldo...</option>
+        ${guias.map(g=>`<option value="${g.key}">${g.guia} — ${g.mat} · saldo: ${g.saldo} ${g.unidad}</option>`).join('')}
+        ${!guias.length?'<option disabled>Sin guías con saldo disponible</option>':''}
+      </select></div>
+    <div id="vcbody" style="display:none">
+      <div id="vcsaldo" class="al al-b" style="margin-bottom:10px"></div>
+      <div class="sep">Distribuir por quiebres</div>
+      <div id="vcdists"></div>
+      <button class="btn btn-g btn-sm" style="margin-bottom:12px" onclick="addVCD()">+ Agregar quiebre</button>
+    </div>
+    <div class="mact">
+      <button class="btn btn-o" onclick="closeM()">Cancelar</button>
+      <button class="btn btn-v" id="vcbtn" disabled onclick="gVC()">✓ Confirmar VC</button>
+    </div>`,620);
+}
+
+function renderVCDists(){
+  const qs=C.quiebres[OID]||[];
+  return VC_S.dists.map((d,i)=>`
+    <div class="qrow" style="margin-bottom:6px">
+      ${VC_S.dists.length>1?`<button class="qrow-del" onclick="rmVCD(${i})">✕</button>`:''}
+      <div class="fr3">
+        <div class="fg" style="margin:0"><label class="fl">Quiebre destino</label>
+          <select class="fs" id="vd-q-${i}" onchange="VC_S.dists[${i}].quiebre=this.value;updVCS()">
+            <option value="">Seleccioná...</option>
+            ${qs.map(q=>`<option value="${q.codigo}" ${d.quiebre===q.codigo?'selected':''}>${q.codigo} — ${q.desc}</option>`).join('')}
+            ${qs.flatMap(q=>(q.items_adicionales||[]).map(ex=>`<option value="${q.codigo}/${ex.codigo}" ${d.quiebre===q.codigo+'/'+ex.codigo?'selected':''}>${q.codigo}/${ex.codigo} [adicional]</option>`)).join('')}
+          </select></div>
+        <div class="fg" style="margin:0"><label class="fl">Cantidad (${VC_S.unidad})</label>
+          <input class="fi" id="vd-c-${i}" type="number" placeholder="0" value="${d.cantidad}" oninput="VC_S.dists[${i}].cantidad=this.value;updVCS()"/></div>
+        <div class="fg" style="margin:0"><label class="fl">Observación</label>
+          <input class="fi" id="vd-o-${i}" placeholder="Opcional" value="${d.obs||''}" oninput="VC_S.dists[${i}].obs=this.value"/></div>
+      </div>
+    </div>`).join('');
+}
+
+function onVCG(val){
+  const b=$('vcbody');
+  if(!val){b.style.display='none';return;}
+  const[guia,mc]=val.split('|');
+  const pm=C.pms.find(p=>p.obra_id===OID&&(p.items||[]).some(i=>i.guia===guia&&i.mat_cod===mc));
+  const it=pm?.items?.find(i=>i.guia===guia&&i.mat_cod===mc);
+  if(!it){b.style.display='none';return;}
+  VC_S={guia,mat_cod:mc,saldo:it.saldo||0,unidad:it.unidad||'u',dists:[{quiebre:'',cantidad:'',obs:''}]};
+  b.style.display='block';updVCS();
+  $('vcdists').innerHTML=renderVCDists();
+}
+
+function updVCS(){
+  const tot=VC_S.dists.reduce((a,d)=>a+(parseFloat(d.cantidad)||0),0);
+  const rest=VC_S.saldo-tot;
+  const ok=tot>0&&rest>=0;
+  $('vcsaldo').innerHTML=`Saldo guía <strong>${VC_S.guia}</strong>: <strong>${VC_S.saldo} ${VC_S.unidad}</strong> · Distribuido: <strong>${tot} ${VC_S.unidad}</strong> · Restante: <strong style="color:${rest<0?'var(--err)':rest===0?'var(--volt)':'var(--warn)'}">${rest} ${VC_S.unidad}</strong>`;
+  const btn=$('vcbtn');if(btn)btn.disabled=!ok;
+}
+
+function addVCD(){VC_S.dists.push({quiebre:'',cantidad:'',obs:''});$('vcdists').innerHTML=renderVCDists();updVCS();}
+function rmVCD(i){VC_S.dists.splice(i,1);$('vcdists').innerHTML=renderVCDists();updVCS();}
+
+function gVC(){
+  const o=C.obras.find(x=>x.id===OID);
+  const dists=VC_S.dists.map((_,i)=>{
+    const qSel=$(`vd-q-${i}`);
+    const txt=qSel?.options[qSel?.selectedIndex]?.text||'';
+    return{quiebre:$(`vd-q-${i}`)?.value||VC_S.dists[i].quiebre,
+      desc:txt,cantidad:parseFloat($(`vd-c-${i}`)?.value||0)||0,obs:$(`vd-o-${i}`)?.value||''};
+  }).filter(d=>d.quiebre&&d.cantidad>0);
+  if(!dists.length){toast('Completá al menos una distribución','r');return;}
+  const tot=dists.reduce((a,d)=>a+d.cantidad,0);
+  const vcId=`VC-${o.id}-${String(Date.now()).slice(-4)}`;
+  // Descontar saldo local
+  C.pms.forEach(pm=>{if(pm.obra_id===OID)(pm.items||[]).forEach(it=>{if(it.guia===VC_S.guia&&it.mat_cod===VC_S.mat_cod)it.saldo=Math.max(0,(it.saldo||0)-tot);});});
+  const inv=C.inv[OID]||[];const inv_it=inv.find(i=>i.mat_cod===VC_S.mat_cod);
+  if(inv_it){inv_it.cons+=tot;inv_it.saldo=Math.max(0,inv_it.saldo-tot);}
+  C.vcs.unshift({id:vcId,obra_id:OID,fecha:$('vcf').value,encargado:o.encargado,estado:'confirmado',
+    items:[{mat_cod:VC_S.mat_cod,mat_desc:VC_S.mat_cod,guia:VC_S.guia,unidad:VC_S.unidad,total:tot,dists}]});
+  closeM();render();
+  toast(`VC confirmado — ${dists.length} quiebre(s) ✓`);
+}
+
+// MODAL: GTI
+function mGTI(){
+  showM('Guía de Traslado Interno (GTI)',`
+    <div class="al al-b">Registrá el traslado urgente de material entre obras. Reemplaza el WhatsApp y genera trazabilidad completa.</div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Obra origen</label>
+        <select class="fs" id="gti-or">${C.obras.map(o=>`<option value="${o.id}">${o.id} — ${o.nombre}</option>`).join('')}</select></div>
+      <div class="fg"><label class="fl">Obra destino</label>
+        <select class="fs" id="gti-dst">${C.obras.map(o=>`<option value="${o.id}">${o.id} — ${o.nombre}</option>`).join('')}</select></div>
+    </div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Material</label><input class="fi" id="gti-mat" placeholder="Código o descripción"/></div>
+      <div class="fg"><label class="fl">Cantidad</label><input class="fi" id="gti-qty" type="number" placeholder="0"/></div>
+    </div>
+    <div class="fg"><label class="fl">Motivo / urgencia</label>
+      <textarea class="fta" id="gti-mot" placeholder="Describí el motivo del traslado urgente..."></textarea></div>
+    <div class="mact">
+      <button class="btn btn-o" onclick="closeM()">Cancelar</button>
+      <button class="btn btn-v" onclick="gGTI()">Registrar y solicitar aprobación →</button>
+    </div>`,540);
+}
+
+function gGTI(){
+  const or=$('gti-or')?.value,dst=$('gti-dst')?.value;
+  if(or===dst){toast('Origen y destino no pueden ser la misma obra','r');return;}
+  toast('GTI enviada — esperando aprobación del jefe de área ✓');closeM();
+}
+
+// ════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════
+function toast(msg,type='v'){
+  const t=document.createElement('div');
+  t.className=`toast t-${type}`;
+  const ico={v:'✓',r:'⚠',w:'⚡'}[type]||'✓';
+  t.innerHTML=`<span>${ico}</span><span>${msg}</span>`;
+  $('toasts').appendChild(t);
+  setTimeout(()=>{t.style.animation='tout .2s ease forwards';setTimeout(()=>t.remove(),200);},3500);
+}
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+(function init(){
+  initSB();
+  const c=getCfg();
+  if(c.url){const u=$('cfgurl');if(u)u.value=c.url;}
+  if(c.key){const k=$('cfgkey');if(k)k.value=c.key;}
+})();
+</script>
+</body>
+</html>
